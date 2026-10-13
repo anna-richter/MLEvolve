@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mlevolve"
+version = "0.1.0"
+description = "Agentic MLE system using Monte Carlo Graph Search with multi-agent collaboration"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+# Dependencies of the agent itself. The ML libraries used by the generated
+# solutions (sklearn, lightgbm, ...) must be installed in the same environment,
+# since solutions run with the same Python interpreter
+# (see requirements_*.txt for the full MLE-bench environment).
+dependencies = [
+    "backoff",
+    "black",
+    "coolname",
+    "dataclasses-json",
+    "faiss-cpu",
+    "funcy",
+    "genson",
+    "google-genai>=1.51",
+    "humanize",
+    "jsonschema",
+    "numpy",
+    "omegaconf>=2.3",
+    "openai>=1.66",
+    "pandas",
+    "rank-bm25",
+    "requests",
+    "rich",
+    "sentence-transformers>=2.6",
+    "shutup",
+    "torch",
+]
+
+[project.scripts]
+mlevolve = "run:run"
+
+[tool.setuptools]
+packages = [
+    "agents",
+    "agents.coder",
+    "agents.coder.diff_coder",
+    "agents.memory",
+    "agents.planner",
+    "agents.prompts",
+    "config",
+    "engine",
+    "engine.coldstart",
+    "engine.validation",
+    "llm",
+    "utils",
+]
+py-modules = ["run"]
+
+[tool.setuptools.package-data]
+config = ["config.yaml"]
+"engine.coldstart" = ["*.json"]
