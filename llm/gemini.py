@@ -15,6 +15,7 @@ from funcy import notnone, once, select_values
 from google import genai
 from google.genai import types
 from config import Config
+from . import usage
 
 logger = logging.getLogger("MLEvolve")
 
@@ -206,11 +207,7 @@ def query(
                     raise ValueError("Gemini returned empty array for structured output")
             logger.info(f"Gemini structured output response: {output}", extra={"verbose": True})
 
-        in_tokens = 0
-        out_tokens = 0
-        if hasattr(response, 'usage_metadata'):
-            in_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0)
-            out_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0)
+        in_tokens, out_tokens = usage.add_gemini(getattr(response, 'usage_metadata', None))
 
         info = {
             "model": filtered_kwargs.get("model", "gemini-3-pro-preview"),
@@ -282,9 +279,13 @@ def generate(
                 config=generation_config,
             )
             full_text = ""
+            usage_metadata = None
             for chunk in response:
                 if chunk.text:
                     full_text += chunk.text
+                if chunk.usage_metadata:
+                    usage_metadata = chunk.usage_metadata
+            usage.add_gemini(usage_metadata)
 
             # Strip thinking tags
             if "</think>" in full_text:

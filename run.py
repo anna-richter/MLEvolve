@@ -15,6 +15,7 @@ from utils.visualization import journal_to_string_tree
 from utils.seed import set_global_seed
 from engine.coldstart import build_guidance_description
 from utils.logging_config import setup_logging
+from llm import usage
 import torch
 
 
@@ -26,6 +27,7 @@ def run():
     set_global_seed(cfg.agent.seed)
     logger = setup_logging(cfg)
     logger.info(f'Starting run "{cfg.exp_name}"')
+    usage.set_path(cfg.log_dir / "token_usage.json")
 
     task_desc = load_task_desc(cfg)
 
