@@ -1,5 +1,6 @@
 """configuration and setup utils"""
 
+import copy
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
@@ -7,7 +8,7 @@ from typing import Hashable, cast
 import datetime
 import coolname
 import rich
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf
 from rich.syntax import Syntax
 import shutup
 from rich.logging import RichHandler
@@ -226,8 +227,44 @@ def prep_cfg(cfg: Config):
     return cast(Config, cfg)
 
 
+_SECRET_KEYS = {"api_key"}
+
+
+def redact_cfg(cfg: Config) -> Config:
+    """Return a copy of cfg with secret values (API keys) masked, for printing/saving.
+
+    The original cfg is not modified, so the running agent keeps the real keys.
+    """
+    redacted = copy.deepcopy(cfg)
+
+    def _walk(node):
+        if isinstance(node, DictConfig):
+            for key in node.keys():
+                if OmegaConf.is_missing(node, key):
+                    continue
+                if key in _SECRET_KEYS:
+                    try:
+                        is_set = bool(node[key])
+                    except Exception:  # e.g. unresolvable interpolation
+                        is_set = True
+                    if is_set:
+                        node[key] = "***"
+                else:
+                    child = node._get_node(key)
+                    if isinstance(child, (DictConfig, ListConfig)):
+                        _walk(child)
+        elif isinstance(node, ListConfig):
+            for i in range(len(node)):
+                child = node._get_node(i)
+                if isinstance(child, (DictConfig, ListConfig)):
+                    _walk(child)
+
+    _walk(redacted)
+    return redacted
+
+
 def print_cfg(cfg: Config) -> None:
-    rich.print(Syntax(OmegaConf.to_yaml(cfg), "yaml", theme="paraiso-dark"))
+    rich.print(Syntax(OmegaConf.to_yaml(redact_cfg(cfg)), "yaml", theme="paraiso-dark"))
 
 
 def load_task_desc(cfg: Config):
@@ -275,8 +312,8 @@ def save_run(cfg: Config, journal):
     # save journal
     serialize.dump_json(journal, cfg.log_dir / "journal.json")
     serialize.dump_json(filtered_journal, cfg.log_dir / "filtered_journal.json")
-    # save config
-    OmegaConf.save(config=cfg, f=cfg.log_dir / "config.yaml")
+    # save config (with API keys masked)
+    OmegaConf.save(config=redact_cfg(cfg), f=cfg.log_dir / "config.yaml")
     
     # save the best found solution
     best_node = journal.get_best_node()

@@ -3,6 +3,7 @@
 
 import json
 import logging
+import os
 import time
 import traceback
 from dataclasses import dataclass
@@ -127,8 +128,15 @@ GEMINI_TIMEOUT_EXCEPTIONS = (
 @once
 def _setup_gemini_client(cfg: Config):
     global _client
+    # Prefer reading the key from the environment so it never has to be put into
+    # the config (which gets saved to the run's log dir).
+    api_key = (
+        cfg.agent.code.api_key
+        or os.environ.get("GEMINI_API_KEY")
+        or os.environ.get("GOOGLE_API_KEY")
+    )
     _client = genai.Client(
-        api_key=cfg.agent.code.api_key,
+        api_key=api_key,
         http_options={'base_url': cfg.agent.code.base_url, 'timeout': 1200000}
     )
 
